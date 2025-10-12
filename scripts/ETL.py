@@ -97,7 +97,6 @@ def load_df_to_postgres(df, table_name, conn):
     buffer = StringIO()
     df.to_csv(buffer, index=False, header=False, sep='\t')
     buffer.seek(0)
-
     with conn.cursor() as cur:
         try:
             cur.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV DELIMITER E'\\t'", buffer)
@@ -121,7 +120,6 @@ def etl_dim_date(source_conn, dwh_conn):
     dim_date_df['date_key'] = dim_date_df['year'] # Simple key: YYYY
     dim_date_df['decade'] = (dim_date_df['year'] // 10) * 10
     dim_date_df['century'] = (dim_date_df['year'] // 100) * 100
-
     dim_date_df = dim_date_df[['date_key', 'year', 'decade', 'century']]
 
     load_df_to_postgres(dim_date_df, 'dim_date', dwh_conn)
@@ -145,7 +143,6 @@ def etl_dim_person(source_conn, dwh_conn):
         df['profession_1'] = df['profession_2'] = df['profession_3'] = None
 
     df_to_load = df[['nconstid', 'primary_name', 'birth_year', 'death_year', 'profession_1', 'profession_2', 'profession_3']]
-
     with dwh_conn.cursor() as cur:
         execute_values(cur, "INSERT INTO dim_person (nconstid, primary_name, birth_year, death_year, profession_1, profession_2, profession_3) VALUES %s", df_to_load.to_records(index=False).tolist())
     dwh_conn.commit()
@@ -157,7 +154,6 @@ def etl_dim_role(source_conn, dwh_conn):
     query = "SELECT DISTINCT category, job, characters FROM principals;"
     df = pd.read_sql(query, source_conn)
     df.rename(columns={'characters': 'character_name'}, inplace=True)
-
     df.replace('\\N', None, inplace=True)
 
     with dwh_conn.cursor() as cur:
@@ -201,7 +197,6 @@ def etl_dim_title(source_conn, dwh_conn):
     df['genre_1'] = df['genres'].str[0].replace({'\\N': None})
     df['genre_2'] = df['genres'].str[1].replace({'\\N': None})
     df['genre_3'] = df['genres'].str[2].replace({'\\N': None})
-
     df['is_adult'] = df['is_adult'].apply(lambda x: True if x == '1' else False)
     for col in ['start_year', 'end_year', 'episode_number', 'season_number']:
         df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
@@ -227,7 +222,6 @@ def etl_fact_title_ratings(source_conn, dwh_conn):
     print("Starting ETL for FactTitleRatings...")
     title_map = pd.read_sql("SELECT title_key, tconstid FROM dim_title", dwh_conn).set_index('tconstid')
     date_map = pd.read_sql("SELECT date_key, year FROM dim_date", dwh_conn).set_index('year')
-
     query = """
     SELECT r.tconst, r.averagerating, r.numvotes, b.startyear
     FROM ratings r
@@ -266,7 +260,6 @@ def etl_fact_title_principals(source_conn, dwh_conn):
     df_role_lookup.columns = ['category', 'job', 'character_name'] # Match index names
     role_keys = role_map.loc[pd.MultiIndex.from_frame(df_role_lookup)].reset_index()['role_key']
     df['role_key'] = role_keys
-
     df_to_load = df[['title_key', 'person_key', 'role_key', 'ordering']].dropna()
 
     for col in ['title_key', 'person_key', 'role_key']:
