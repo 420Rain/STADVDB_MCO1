@@ -3,9 +3,17 @@
 ## Overview
 ### MCO1
 Project involves importing the IMDb dataset into a PostgreSQL RDS instance on AWS.
+### MCO2
+tbc...
 
 ## Files
 `import_imdb.sh`: Bash script to import the IMDb files into the PostgreSQL database
+
+## Prerequisites
+Ensure that you have installed the latest version of PostgreSQL then run the ff.:
+```bash
+pip install -r requirements.txt
+```
 
 ## Setup
 NOTE: Some of these packages might not exist on the chosen EC2 instance adjust accordingly

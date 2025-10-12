@@ -1,9 +1,9 @@
 # Import IMDb TSV files into PostgreSQL
-DB_HOST="stadvdb-source-database.cvwaeiiws18z.ap-southeast-1.rds.amazonaws.com"
-DB_NAME="stadvdb_source_db"
-DB_USER="postgres"
-DB_SCHEMA="stadvdb"
-IMPORT_DIR="/home/ec2-user/imports"
+set -e
+
+if [ -f .env ]; then
+  export $(grep -v '^#' .env | xargs)
+fi
 
 echo "Starting data import..."
 

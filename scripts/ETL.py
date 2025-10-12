@@ -2,9 +2,8 @@ import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
 from io import StringIO
-import sys
+import sys, os
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
@@ -25,7 +24,6 @@ DWH_DB_CONFIG = {
     "password": os.getenv("DW_PASS"),
     "schema": os.getenv("DW_SCHEMA"),
 }
-
 
 def create_dwh_tables(dwh_conn):
     ddl_script = """
@@ -99,7 +97,7 @@ def load_df_to_postgres(df, table_name, conn):
     buffer = StringIO()
     df.to_csv(buffer, index=False, header=False, sep='\t')
     buffer.seek(0)
-    
+
     with conn.cursor() as cur:
         try:
             cur.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV DELIMITER E'\\t'", buffer)
@@ -114,16 +112,16 @@ def load_df_to_postgres(df, table_name, conn):
 def etl_dim_date(source_conn, dwh_conn):
     print("Starting ETL for DimDate...")
     df_years = pd.read_sql('SELECT DISTINCT "startYear" FROM title_basics WHERE "startYear" IS NOT NULL;', source_conn)
-    
+
     min_year = int(df_years['startYear'].min())
     max_year = int(df_years['startYear'].max())
-    
+
     years = range(min_year, max_year + 1)
     dim_date_df = pd.DataFrame(years, columns=['year'])
     dim_date_df['date_key'] = dim_date_df['year'] # Simple key: YYYY
     dim_date_df['decade'] = (dim_date_df['year'] // 10) * 10
     dim_date_df['century'] = (dim_date_df['year'] // 100) * 100
-    
+
     dim_date_df = dim_date_df[['date_key', 'year', 'decade', 'century']]
 
     load_df_to_postgres(dim_date_df, 'dim_date', dwh_conn)
@@ -147,7 +145,7 @@ def etl_dim_person(source_conn, dwh_conn):
         df['profession_1'] = df['profession_2'] = df['profession_3'] = None
 
     df_to_load = df[['nconstid', 'primary_name', 'birth_year', 'death_year', 'profession_1', 'profession_2', 'profession_3']]
-    
+
     with dwh_conn.cursor() as cur:
         execute_values(cur, "INSERT INTO dim_person (nconstid, primary_name, birth_year, death_year, profession_1, profession_2, profession_3) VALUES %s", df_to_load.to_records(index=False).tolist())
     dwh_conn.commit()
@@ -159,7 +157,7 @@ def etl_dim_role(source_conn, dwh_conn):
     query = "SELECT DISTINCT category, job, characters FROM principals;"
     df = pd.read_sql(query, source_conn)
     df.rename(columns={'characters': 'character_name'}, inplace=True)
-    
+
     df.replace('\\N', None, inplace=True)
 
     with dwh_conn.cursor() as cur:
@@ -203,13 +201,13 @@ def etl_dim_title(source_conn, dwh_conn):
     df['genre_1'] = df['genres'].str[0].replace({'\\N': None})
     df['genre_2'] = df['genres'].str[1].replace({'\\N': None})
     df['genre_3'] = df['genres'].str[2].replace({'\\N': None})
-    
+
     df['is_adult'] = df['is_adult'].apply(lambda x: True if x == '1' else False)
     for col in ['start_year', 'end_year', 'episode_number', 'season_number']:
         df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
 
     df_to_load = df[[
-        'tconstid', 'title_type', 'parent_tconst', 'primary_title', 'original_title', 
+        'tconstid', 'title_type', 'parent_tconst', 'primary_title', 'original_title',
         'title_language', 'is_adult', 'start_year', 'end_year', 'episode_number',
         'season_number', 'genre_1', 'genre_2', 'genre_3'
     ]]
@@ -229,7 +227,7 @@ def etl_fact_title_ratings(source_conn, dwh_conn):
     print("Starting ETL for FactTitleRatings...")
     title_map = pd.read_sql("SELECT title_key, tconstid FROM dim_title", dwh_conn).set_index('tconstid')
     date_map = pd.read_sql("SELECT date_key, year FROM dim_date", dwh_conn).set_index('year')
-    
+
     query = """
     SELECT r.tconst, r.averagerating, r.numvotes, b.startyear
     FROM ratings r
@@ -240,9 +238,9 @@ def etl_fact_title_ratings(source_conn, dwh_conn):
     df['title_key'] = df['tconst'].map(title_map['title_key'])
     df['startyear'] = pd.to_numeric(df['startyear'], errors='coerce')
     df['date_key'] = df['startyear'].map(date_map['date_key'])
-    
+
     df.rename(columns={'averagerating': 'average_rating', 'numvotes': 'num_votes'}, inplace=True)
-    
+
     df_to_load = df[['title_key', 'date_key', 'average_rating', 'num_votes']].dropna()
     for col in ['title_key', 'date_key', 'num_votes']:
         df_to_load[col] = df_to_load[col].astype(int)
@@ -268,14 +266,13 @@ def etl_fact_title_principals(source_conn, dwh_conn):
     df_role_lookup.columns = ['category', 'job', 'character_name'] # Match index names
     role_keys = role_map.loc[pd.MultiIndex.from_frame(df_role_lookup)].reset_index()['role_key']
     df['role_key'] = role_keys
-    
+
     df_to_load = df[['title_key', 'person_key', 'role_key', 'ordering']].dropna()
 
     for col in ['title_key', 'person_key', 'role_key']:
         df_to_load[col] = df_to_load[col].astype(int)
 
     load_df_to_postgres(df_to_load, 'fact_title_principals', dwh_conn)
-
 
 def main():
     try:
@@ -299,7 +296,7 @@ def main():
         with dwh_conn.cursor() as cur:
             cur.execute(f"SET search_path TO {DWH_DB_CONFIG['schema']};")
         print("Successfully connected to source and DWH databases.")
-        
+
         # create_dwh_tables(dwh_conn)
 
         # etl_dim_date(source_conn, dwh_conn)
@@ -309,13 +306,13 @@ def main():
 
         # etl_fact_title_ratings(source_conn, dwh_conn)
         # etl_fact_title_principals(source_conn, dwh_conn)
-        
+
     except psycopg2.Error as e:
         print(f"Database error: {e}")
     finally:
-        if 'source_conn' in locals() and source_conn:
+        if 'source_conn' in locals() and source_conn: # type: ignore
             source_conn.close()
-        if 'dwh_conn' in locals() and dwh_conn:
+        if 'dwh_conn' in locals() and dwh_conn: # type: ignore
             dwh_conn.close()
         print("ETL process finished. Connections closed.")
 
