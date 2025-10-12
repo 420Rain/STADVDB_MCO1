@@ -293,6 +293,7 @@ def main():
             user=DWH_DB_CONFIG["user"],
             password=DWH_DB_CONFIG["password"],
         )
+
         with dwh_conn.cursor() as cur:
             cur.execute(f"SET search_path TO {DWH_DB_CONFIG['schema']};")
         print("Successfully connected to source and DWH databases.")

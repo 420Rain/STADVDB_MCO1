@@ -11,7 +11,7 @@ import_tsv() {
   local table=$1
   local file=$2
   echo "Importing $file into $table..."
-  psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c "\copy $DB_SCHEMA.$table FROM '$IMPORT_DIR/$file' WITH (FORMAT text, DELIMITER E'\t', NULL '\N', HEADER)"
+  psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_DATABASE" -c "\copy $DB_SCHEMA.$table FROM '$IMPORT_DIR/$file' WITH (FORMAT text, DELIMITER E'\t', NULL '\N', HEADER)"
 }
 
 import_tsv "akas_import" "title.akas.tsv"
