@@ -15,7 +15,7 @@ CREATE TABLE dw_schema.dim_date (
 );
 
 CREATE TABLE dw_schema.dim_person (
-    person_key SERIAL PRIMARY KEY,
+    person_key BIGSERIAL PRIMARY KEY,
     nconstid VARCHAR(15) UNIQUE NOT NULL,
     primary_name VARCHAR(255),
     birth_year INT,
@@ -26,15 +26,15 @@ CREATE TABLE dw_schema.dim_person (
 );
 
 CREATE TABLE dw_schema.dim_role (
-    role_key SERIAL PRIMARY KEY,
+    role_key BIGSERIAL PRIMARY KEY,
     category VARCHAR(100),
-    job VARCHAR(255),
-    character_name VARCHAR(512),
+    job VARCHAR(300),
+    character_name VARCHAR(500),
     UNIQUE(category, job, character_name)
 );
 
 CREATE TABLE dw_schema.dim_title (
-    title_key SERIAL PRIMARY KEY,
+    title_key BIGSERIAL PRIMARY KEY,
     tconstid VARCHAR(15) UNIQUE NOT NULL,
     title_type VARCHAR(50),
     parent_tconst VARCHAR(15),
@@ -52,16 +52,16 @@ CREATE TABLE dw_schema.dim_title (
 );
 
 CREATE TABLE dw_schema.fact_title_ratings (
-    title_key INT REFERENCES dw_schema.dim_title(title_key),
+    title_key BIGINT REFERENCES dw_schema.dim_title(title_key),
     date_key INT REFERENCES dw_schema.dim_date(date_key),
     average_rating DECIMAL(3,1),
     num_votes INT
 );
 
 CREATE TABLE dw_schema.fact_title_principals (
-    title_key INT REFERENCES dw_schema.dim_title(title_key),
-    person_key INT REFERENCES dw_schema.dim_person(person_key),
-    role_key INT REFERENCES dw_schema.dim_role(role_key),
+    title_key BIGINT REFERENCES dw_schema.dim_title(title_key),
+    person_key BIGINT REFERENCES dw_schema.dim_person(person_key),
+    role_key BIGINT REFERENCES dw_schema.dim_role(role_key),
     principal_ordering INT
 );
 
@@ -81,12 +81,12 @@ FROM generate_series(
 INSERT INTO dw_schema.dim_person (nconstid, primary_name, birth_year, death_year, profession_1, profession_2, profession_3)
 SELECT
     "nconst" AS nconstid,
-    "primaryName" AS primary_name,
-    NULLIF("birthYear", '\N')::INT AS birth_year,
-    NULLIF("deathYear", '\N')::INT AS death_year,
-    split_part("primaryProfession", ',', 1) AS profession_1,
-    NULLIF(split_part("primaryProfession", ',', 2), '') AS profession_2,
-    NULLIF(split_part("primaryProfession", ',', 3), '') AS profession_3
+    "primary_name" AS primary_name,
+    NULLIF("birth_year"::TEXT, '\N')::INT AS birth_year,
+    NULLIF("death_year"::TEXT, '\N')::INT AS death_year,
+    "primary_profession"[1] AS profession_1,
+    "primary_profession"[2] AS profession_2,
+    "primary_profession"[3] AS profession_3
 FROM stadvdb.name_basics;
 
 -- dim_role
