@@ -166,5 +166,7 @@ SELECT
 FROM stadvdb.principals pr
 JOIN dw_schema.dim_title t ON t.tconstid = pr.tconst
 JOIN dw_schema.dim_person p ON p.nconstid = pr.nconst
-JOIN dw_schema.dim_role r ON r.category = pr.category
+JOIN dw_schema.dim_role r ON r.category IS NOT DISTINCT FROM pr.category
+                         AND r.job IS NOT DISTINCT FROM pr.job
+                         AND r.character_name IS NOT DISTINCT FROM pr.characters
 WHERE pr.tconst = 'tt0000001'; -- AND pr.tconst < 'tt0010000';
