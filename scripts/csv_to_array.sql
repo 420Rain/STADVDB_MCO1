@@ -38,8 +38,9 @@ ALTER TABLE stadvdb.ratings
 	RENAME COLUMN "numVotes" TO num_votes;
 	
 CREATE INDEX IF NOT EXISTS akas_titleid_isoriginal_key ON stadvdb.akas(title_id, is_original_title);
-CREATE INDEX akas_title_id_idx ON stadvdb.akas (title_id);
-CREATE INDEX principals_tconst_idx ON stadvdb.principals (tconst);
+CREATE INDEX IF NOT EXISTS akas_title_id_idx ON stadvdb.akas (title_id);
+CREATE INDEX IF NOT EXISTS akas_original_idx ON stadvdb.akas (is_original_title);
+CREATE INDEX IF NOT EXISTS principals_tconst_idx ON stadvdb.principals (tconst);
 
 ALTER TABLE IF EXISTS stadvdb.akas
 	ADD CONSTRAINT akas_pkey PRIMARY KEY (ordering, title_id);
@@ -53,14 +54,14 @@ ALTER TABLE IF EXISTS stadvdb.episode
 ALTER TABLE IF EXISTS stadvdb.name_basics
 	ADD CONSTRAINT name_basics_pkey PRIMARY KEY (nconst);
 
-ALTER TABLE IF EXISTS stadvdb.principals
-	ADD CONSTRAINT principals_pkey PRIMARY KEY (tconst, ordering);
-
 ALTER TABLE IF EXISTS stadvdb.ratings
 	ADD CONSTRAINT ratings_pkey PRIMARY KEY (tconst);
 
 ALTER TABLE IF EXISTS stadvdb.title_basics
 	ADD CONSTRAINT title_basics_pkey PRIMARY KEY (tconst);
+
+ALTER TABLE IF EXISTS stadvdb.principals
+	ADD CONSTRAINT principals_pkey PRIMARY KEY (tconst, ordering);
 	
 ALTER TABLE IF EXISTS stadvdb.akas
 	ADD CONSTRAINT akas_title_id_fkey FOREIGN KEY (title_id)
