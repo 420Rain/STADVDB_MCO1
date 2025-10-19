@@ -117,9 +117,9 @@ class OLAP(object):
                 FROM dw_schema.fact_title_principals AS ftp
                 JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
                 WHERE ftr.num_votes > :votes -- @minVotes
                 GROUP BY dp.primary_name
@@ -145,11 +145,11 @@ class OLAP(object):
                 FROM dw_schema.fact_title_principals AS ftp
                 JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
-                JOIN dim_role AS dr
+                JOIN dw_schema.dim_role AS dr
                     ON ftp.role_key = dr.role_key
                 WHERE ftr.num_votes > :votes -- @minVotes
                 AND dr.category = :job -- @role/job 
@@ -172,15 +172,15 @@ class OLAP(object):
             query = text("""
                 SELECT dt.primary_title,
                     ftr.average_rating,
-                    ftr.number_votes
+                    ftr.num_votes
                 FROM dw_schema.fact_title_principals AS ftp
                 JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
-                JOIN dim_role AS dr
+                JOIN dw_schema.dim_role AS dr
                     ON ftp.role_key = dr.role_key
                 WHERE dr.category = :job -- @role/job
                     AND dp.primary_name = :name -- @empName
@@ -264,7 +264,7 @@ class OLAP(object):
                     WHERE dt.title_type = 'movie'
                         AND ftr.num_votes > :votes -- @minVotes
                         AND dt.genre_1 IS NOT NULL
-                        AND dt.language IS NOT NULL
+                        AND dt.title_language IS NOT NULL
                     GROUP BY dt.title_language,
                         dt.genre_1
                 )
