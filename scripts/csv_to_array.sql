@@ -40,7 +40,7 @@ ALTER TABLE stadvdb.ratings
 CREATE INDEX IF NOT EXISTS akas_titleid_isoriginal_key ON stadvdb.akas(title_id, is_original_title);
 CREATE INDEX IF NOT EXISTS akas_title_id_idx ON stadvdb.akas (title_id);
 CREATE INDEX IF NOT EXISTS akas_original_idx ON stadvdb.akas (is_original_title);
-CREATE INDEX IF NOT EXISTS principals_tconst_idx ON stadvdb.principals (tconst);
+CREATE INDEX IF NOT EXISTS title_basics_year_idx ON stadvdb.title_basics (start_year);
 
 ALTER TABLE IF EXISTS stadvdb.akas
 	ADD CONSTRAINT akas_pkey PRIMARY KEY (ordering, title_id);

@@ -106,8 +106,8 @@ ON CONFLICT (category, job, character_name) DO NOTHING;
 
 -- Create dim_title
 -- [~1m 40s]
-CREATE TEMP TABLE akas_filter AS;
-EXPLAIN SELECT
+CREATE TEMP TABLE akas_filter AS
+SELECT
 	title_id,
 	language
 FROM stadvdb.akas
@@ -142,9 +142,8 @@ LEFT JOIN akas_filter a ON b.tconst = a.title_id;
 CREATE UNIQUE INDEX dim_date_year_idx ON dw_schema.dim_date (year);
 CREATE UNIQUE INDEX dim_title_tconstid_idx ON dw_schema.dim_title (tconstid);
 CREATE UNIQUE INDEX dim_person_nconstid_idx ON dw_schema.dim_person (nconstid);
-CREATE INDEX dim_role_category_idx ON dw_schema.dim_role (category);
 
--- Create fact_title_ratings
+-- Create fact_title_ratings [~3m 10s]
 INSERT INTO dw_schema.fact_title_ratings(title_key, date_key, average_rating, num_votes)
 SELECT
     t.title_key,
@@ -157,15 +156,39 @@ JOIN dw_schema.dim_title t ON t.tconstid = b.tconst
 JOIN dw_schema.dim_date d ON d.year = b.start_year;
 
 -- Create fact_title_principals (Best to do this in batches)
+ALTER TABLE dw_schema.dim_role
+ADD COLUMN role_lookup_hash INTEGER GENERATED ALWAYS AS (
+    HASHTEXT(COALESCE(category, '<<NULL>>') || '|' ||
+             COALESCE(job, '<<NULL>>') || '|' ||
+             COALESCE(character_name, '<<NULL>>'))
+) STORED;
+CREATE INDEX dim_role_lookup_hash_idx ON dw_schema.dim_role(role_lookup_hash);
+
+ALTER TABLE stadvdb.principals
+ADD COLUMN role_lookup_hash INTEGER GENERATED ALWAYS AS (
+    HASHTEXT(COALESCE(category, '<<NULL>>') || '|' ||
+             COALESCE(job, '<<NULL>>') || '|' ||
+             COALESCE(characters, '<<NULL>>'))
+) STORED;
+CREATE INDEX principals_lookup_hash_idx ON stadvdb.principals(role_lookup_hash);
+
 INSERT INTO dw_schema.fact_title_principals(title_key, person_key, role_key, principal_ordering)
 SELECT
     t.title_key,
     p.person_key,
     r.role_key,
     pr.ordering AS principal_ordering
-FROM stadvdb.principals pr
+FROM (
+	SELECT * FROM stadvdb.principals
+	ORDER BY tconst, nconst
+	LIMIT 1000000 OFFSET 96000000
+) pr
 JOIN dw_schema.dim_title t ON t.tconstid = pr.tconst
 JOIN dw_schema.dim_person p ON p.nconstid = pr.nconst
-JOIN dw_schema.dim_role r ON r.category IS NOT DISTINCT FROM pr.category
-                         AND r.job IS NOT DISTINCT FROM pr.job
-                         AND r.character_name IS NOT DISTINCT FROM pr.characters;
+JOIN dw_schema.dim_role r ON r.role_lookup_hash = pr.role_lookup_hash;
+
+ALTER TABLE dw_schema.dim_role
+DROP COLUMN role_lookup_hash;
+
+ALTER TABLE stadvdb.principals
+DROP COLUMN role_lookup_hash;
