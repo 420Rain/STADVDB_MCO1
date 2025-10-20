@@ -6,3 +6,6 @@ sqlalchemy
 matplotlib
 seaborn
 scipy
+ipywidgets
+plotly
+nbformat

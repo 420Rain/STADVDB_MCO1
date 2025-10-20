@@ -75,7 +75,7 @@ class OLAP(object):
             
         return result
     
-    def query_3(self, minVotes: int = 500):
+    def query_3(self, minVotes: int = 5000):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -109,7 +109,7 @@ class OLAP(object):
             
         return result
     
-    def query_4_1(self, minVotes: int = 500, minTitles: int = 5):
+    def query_4_1(self, minVotes: int = 5000, minTitles: int = 5):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -137,7 +137,7 @@ class OLAP(object):
             
         return result
     
-    def query_4_2(self, minVotes: int = 500, role: str = 'director', minTitles: int = 5):
+    def query_4_2(self, minVotes: int = 5000, role: str = 'director', minTitles: int = 5):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -196,7 +196,7 @@ class OLAP(object):
             
         return result
     
-    def query_5(self, minVotes: int = 1000, minRating: float = 6.0, maxRating: float = 10.0):
+    def query_5(self, minVotes: int = 5000, minRating: float = 6.0, maxRating: float = 10.0):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -249,7 +249,7 @@ class OLAP(object):
             
         return result
     
-    def query_7(self, minVotes: int = 1000):
+    def query_7(self, minVotes: int = 5000):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -279,27 +279,29 @@ class OLAP(object):
             query = text("""
                 WITH group_stats AS (
                     SELECT
-                            t.is_adult,
-                            COUNT(r.average_rating) AS n,
-                            AVG(r.average_rating) AS mean,
-                            VAR_SAMP(r.average_rating) AS variance
+                        t.is_adult,
+                        COUNT(r.average_rating) AS n,
+                        AVG(r.average_rating) AS mean,
+                        VAR_SAMP(r.average_rating) AS variance
                     FROM dw_schema.fact_title_ratings AS r
                     JOIN dw_schema.dim_title AS t
                         ON r.title_key = t.title_key
                     WHERE t.title_type = 'movie'
                     GROUP BY t.is_adult
-                ), adult_stats AS (
+                ), 
+                adult_stats AS (
                     SELECT
-                            n,
-                            mean,
-                            variance
+                         n,
+                         mean,
+                         variance
                     FROM group_stats
                     WHERE is_adult = TRUE
-                ), non_adult_stats AS (
+                ), 
+                non_adult_stats AS (
                     SELECT
-                            n,
-                            mean,
-                            variance
+                         n,
+                         mean,
+                         variance
                     FROM group_stats
                     WHERE is_adult = FALSE
                 )
