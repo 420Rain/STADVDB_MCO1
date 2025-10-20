@@ -178,11 +178,7 @@ SELECT
     p.person_key,
     r.role_key,
     pr.ordering AS principal_ordering
-FROM (
-	SELECT * FROM stadvdb.principals
-	ORDER BY tconst, nconst
-	LIMIT 1000000 OFFSET 96000000
-) pr
+FROM stadvdb.principals pr
 JOIN dw_schema.dim_title t ON t.tconstid = pr.tconst
 JOIN dw_schema.dim_person p ON p.nconstid = pr.nconst
 JOIN dw_schema.dim_role r ON r.role_lookup_hash = pr.role_lookup_hash;
@@ -192,3 +188,11 @@ DROP COLUMN role_lookup_hash;
 
 ALTER TABLE stadvdb.principals
 DROP COLUMN role_lookup_hash;
+
+ALTER TABLE IF EXISTS dw_schema.fact_title_principals
+	ADD CONSTRAINT fact_title_principals_pkey PRIMARY KEY (title_key, person_key, role_key, principal_ordering);
+
+CREATE INDEX principals_person_key_idx ON dw_schema.fact_title_principals (person_key); -- [7s->1s]
+CREATE INDEX ratings_votes_idx ON dw_schema.fact_title_ratings (num_votes);
+CREATE INDEX title_type_idx ON dw_schema.dim_title (title_type);
+-- CREATE INDEX ratings_ave_rating_idx ON dw_schema.fact_title_ratings (average_rating);
