@@ -1,5 +1,7 @@
 import pandas as pd
 from sqlalchemy import text
+from scipy import stats
+import math
 
 class OLAP(object):
     def __init__(self, engine):
@@ -302,7 +304,9 @@ class OLAP(object):
                     WHERE is_adult = FALSE
                 )
                 SELECT
-                    (non_adult_stats.mean - adult_stats.mean) / SQRT((non_adult_stats.variance / non_adult_stats.n) + (adult_stats.variance / adult_stats.n)) AS t_statistic_adult_vs_non_adult_rating
+                    (non_adult_stats.mean - adult_stats.mean) / SQRT((non_adult_stats.variance / non_adult_stats.n) + (adult_stats.variance / adult_stats.n)) AS t_statistic_adult_vs_non_adult_rating,
+                    non_adult_stats.n AS n_non_adult,
+                    adult_stats.n AS n_adult
                 FROM adult_stats, non_adult_stats;
             """)
             
@@ -343,7 +347,9 @@ class OLAP(object):
                     WHERE century = 1900
                 )
                 SELECT
-                    (century_19_stats.mean - century_20_stats.mean) / SQRT((century_19_stats.variance / century_19_stats.n) + (century_20_stats.variance / century_20_stats.n)) AS t_statistic_century_rating_comparison
+                    (century_19_stats.mean - century_20_stats.mean) / SQRT((century_19_stats.variance / century_19_stats.n) + (century_20_stats.variance / century_20_stats.n)) AS t_statistic_century_rating_comparison,
+                    century_19_stats.n AS n_19th,
+                    century_20_stats.n AS n_20th
                 FROM century_19_stats, century_20_stats;
             """)
             
@@ -382,7 +388,9 @@ class OLAP(object):
                     WHERE genre_1 = 'Comedy'
                 )
                 SELECT
-                    (action_stats.mean - comedy_stats.mean) / SQRT((action_stats.variance / action_stats.n) + (comedy_stats.variance / comedy_stats.n)) AS t_statistic_action_vs_comedy_votes
+                    (action_stats.mean - comedy_stats.mean) / SQRT((action_stats.variance / action_stats.n) + (comedy_stats.variance / comedy_stats.n)) AS t_statistic_action_vs_comedy_votes, 
+                    action_stats.n AS n_action, 
+                    comedy_stats.n AS n_comedy
                 FROM action_stats, comedy_stats;
             """)
             
@@ -425,7 +433,9 @@ class OLAP(object):
                     WHERE decade = 2010
                 )
                 SELECT
-                    (stats_1990s.mean - stats_2010s.mean) / SQRT((stats_1990s.variance / stats_1990s.n) + (stats_2010s.variance / stats_2010s.n)) AS t_statistic_tv_series_lifespan
+                    (stats_1990s.mean - stats_2010s.mean) / SQRT((stats_1990s.variance / stats_1990s.n) + (stats_2010s.variance / stats_2010s.n)) AS t_statistic_tv_series_lifespan,
+                    stats_1990s.n AS n_1990s,
+                    stats_2010s.n AS n_2010s
                 FROM stats_1990s, stats_2010s;
             """)
             
@@ -467,11 +477,37 @@ class OLAP(object):
                     WHERE film_type = 'Standalone'
                 )
                 SELECT
-                    (franchise_stats.mean - standalone_stats.mean) / SQRT((franchise_stats.variance / franchise_stats.n) + (standalone_stats.variance / standalone_stats.n)) AS t_statistic_franchise_vs_standalone_votes
+                    (franchise_stats.mean - standalone_stats.mean) / SQRT((franchise_stats.variance / franchise_stats.n) + (standalone_stats.variance / standalone_stats.n)) AS t_statistic_franchise_vs_standalone_votes,
+                    franchise_stats.n AS n_franchise,
+                    standalone_stats.n AS n_standalone
                 FROM franchise_stats, standalone_stats;
             """)
             
             result = connection.execute(query)
             
         return result
+    
+    def print_p_value_report(self, t_stat, n1, n2, s1, s2, alpha=0.05, tail='two-tailed'):
+        df = min(n1 - 1, n2 - 1)
+
+        if tail == 'two-tailed':
+            p_value = 2 * (1 - stats.t.cdf(abs(t_stat), df))
+        elif tail == 'left':
+            p_value = stats.t.cdf(t_stat, df)
+        elif tail == 'right':
+            p_value = 1 - stats.t.cdf(t_stat, df)
+        else:
+            raise ValueError("tail must be 'two-tailed', 'left', or 'right'")
+
+        print(f"---T-test Statistical Analysis ---")
+        print(f"Input T-statistic: {t_stat}")
+        print(f"Sample Size ({s1}): {n1}")
+        print(f"Sample Size ({s2}): {n2}")
+        print("-----------------------------------")
+        print(f"Calculated P-value: {p_value:.6f}")
+
+        if p_value < alpha:
+            print("\nConclusion: The result is statistically significant (There is a significant difference between the two samples).")
+        else:
+            print("\nConclusion: The result is not statistically significant (There is NO significant difference between the two samples).")
     
