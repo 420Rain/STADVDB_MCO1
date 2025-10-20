@@ -3,3 +3,6 @@ psycopg2
 dotenv
 ipython-sql
 sqlalchemy
+matplotlib
+seaborn
+scipy

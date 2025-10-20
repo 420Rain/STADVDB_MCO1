@@ -11,7 +11,7 @@ class OLAP(object):
         self.engine = engine
     
     
-    def query_1(self, minVotes = 20000, startYear = 2019, titleType = 'movie'):
+    def query_1(self, minVotes: int = 5000, startYear: int = 2019, titleType: str = 'movie'):
         """Returns a table detailing the highest rated titles given the title 
         type in a given year.
         Arguments:
@@ -73,7 +73,7 @@ class OLAP(object):
             
         return result
     
-    def query_3(self, minVotes = 500):
+    def query_3(self, minVotes: int = 500):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -107,7 +107,7 @@ class OLAP(object):
             
         return result
     
-    def query_4_1(self, minVotes = 500, minTitles = 5):
+    def query_4_1(self, minVotes: int = 500, minTitles: int = 5):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -135,7 +135,7 @@ class OLAP(object):
             
         return result
     
-    def query_4_2(self, minVotes = 500, role = 'director', minTitles = 5):
+    def query_4_2(self, minVotes: int = 500, role: str = 'director', minTitles: int = 5):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -156,7 +156,7 @@ class OLAP(object):
                 GROUP BY dp.primary_name
                 HAVING COUNT(DISTINCT(dt.title_key)) >= :titles -- @minTitles
                 ORDER BY number_of_titles DESC,
-                    average_ratings_of_titles DESC
+                    average_ratings_of_titles DESC;
             """)
             
             result = connection.execute(
@@ -166,7 +166,7 @@ class OLAP(object):
             
         return result
     
-    def query_4_3(self, role = 'director', empName = 'Hayao Miyazaki'):
+    def query_4_3(self, role: str = 'director', empName: str = 'Hayao Miyazaki'):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -194,7 +194,7 @@ class OLAP(object):
             
         return result
     
-    def query_5(self, minVotes = 1000, minRating = 6.0, maxRating = 10.0):
+    def query_5(self, minVotes: int = 1000, minRating: float = 6.0, maxRating: float = 10.0):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -220,7 +220,7 @@ class OLAP(object):
             
         return result
     
-    def query_6(self, seriesName = 'Steins;Gate'):
+    def query_6(self, seriesName: str = 'Steins;Gate'):
         with self.engine.connect() as connection:
             
             query = text("""
@@ -247,37 +247,21 @@ class OLAP(object):
             
         return result
     
-    def query_7(self, minVotes = 1000):
+    def query_7(self, minVotes: int = 1000):
         with self.engine.connect() as connection:
             
             query = text("""
-                WITH top_genre AS (
-                    SELECT 
-                        dt.title_language,
-                        dt.genre_1,
-                        AVG(ftr.average_rating) AS avg_rating,
-                        SUM(ftr.num_votes) AS total_votes,
-                        ROW_NUMBER() OVER (PARTITION BY dt.title_language ORDER BY AVG(ftr.average_rating) DESC) AS ranked_order
-                    FROM dw_schema.fact_title_ratings AS ftr
-                    JOIN dw_schema.dim_title AS dt
-                        ON ftr.title_key = dt.title_key
-                    WHERE dt.title_type = 'movie'
-                        AND ftr.num_votes > :votes -- @minVotes
-                        AND dt.genre_1 IS NOT NULL
-                        AND dt.title_language IS NOT NULL
-                    GROUP BY dt.title_language,
-                        dt.genre_1
-                )
                 SELECT 
-                    tg.title_language,
-                    tg.ranked_order,
-                    tg.genre_1,
-                    ROUND(tg.avg_rating,2) AS avg_rating,
-                    tg.total_votes
-                FROM top_genre AS tg
-                WHERE tg.ranked_order <= 3
-                ORDER BY tg.title_language,
-                    tg.ranked_order
+                    dt.genre_1 AS genre,
+                    ftr.average_rating AS rating,
+                    ftr.num_votes AS votes
+                FROM dw_schema.fact_title_ratings AS ftr
+                JOIN dw_schema.dim_title AS dt ON ftr.title_key = dt.title_key
+                WHERE 
+                    dt.title_type = 'movie'
+                    AND ftr.num_votes > :votes -- @minVotes
+                    AND dt.genre_1 IS NOT NULL
+                ORDER BY dt.genre_1;
             """)
             
             result = connection.execute(
@@ -466,7 +450,6 @@ class OLAP(object):
                     FROM dw_schema.fact_title_ratings as r
                     JOIN dw_schema.dim_title as t
                     ON r.title_key = t.title_key
-                    WHERE t.title_type = 'movie'
                     GROUP BY film_type
                 ), franchise_stats AS (
                     SELECT
