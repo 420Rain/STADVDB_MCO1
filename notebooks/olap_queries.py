@@ -1,9 +1,5 @@
 import pandas as pd
-from sqlalchemy import create_engine, text
-import psycopg2
-from psycopg2.extras import execute_values
-from io import StringIO
-import sys, os
+from sqlalchemy import text
 
 class OLAP(object):
     def __init__(self, engine):
@@ -62,7 +58,7 @@ class OLAP(object):
                             WHEN title_type IN ('tvEpisode', 'tvMiniSeries', 'tvMovie', 'tvPilot', 'tvSeries', 'tvShort', 'tvSpecial') THEN 'Television'
                             WHEN title_type IN ('movie', 'short', 'video') THEN 'Film'
                             ELSE 'Other'
-                        END AS 'broad_type'
+                        END AS broad_type
                     FROM dw_schema.dim_title
                 )
                 SELECT broad_type, 
@@ -89,7 +85,7 @@ class OLAP(object):
                             WHEN title_type IN ('tvEpisode', 'tvMiniSeries', 'tvMovie', 'tvPilot', 'tvSeries', 'tvShort', 'tvSpecial') THEN 'Television'
                             WHEN title_type IN ('movie', 'short', 'video') THEN 'Film'
                             ELSE 'Other'
-                        END AS 'broad_type'
+                        END AS broad_type
                     FROM dw_schema.dim_title
                 )
                 SELECT ruh.broad_type, 
@@ -119,11 +115,11 @@ class OLAP(object):
                     COUNT(DISTINCT(dt.title_key)) AS number_of_titles,
                     ROUND(AVG(ftr.average_rating),2) AS average_ratings_of_titles
                 FROM dw_schema.fact_title_principals AS ftp
-                JOIN dim_person AS dp 
+                JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
                 WHERE ftr.num_votes > :votes -- @minVotes
                 GROUP BY dp.primary_name
@@ -147,13 +143,13 @@ class OLAP(object):
                     COUNT(DISTINCT(dt.title_key)) AS number_of_titles,
                     ROUND(AVG(ftr.average_rating),2) AS average_ratings_of_titles
                 FROM dw_schema.fact_title_principals AS ftp
-                JOIN dim_person AS dp 
+                JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
-                JOIN dim_role AS dr
+                JOIN dw_schema.dim_role AS dr
                     ON ftp.role_key = dr.role_key
                 WHERE ftr.num_votes > :votes -- @minVotes
                 AND dr.category = :job -- @role/job 
@@ -176,15 +172,15 @@ class OLAP(object):
             query = text("""
                 SELECT dt.primary_title,
                     ftr.average_rating,
-                    ftr.number_votes
+                    ftr.num_votes
                 FROM dw_schema.fact_title_principals AS ftp
-                JOIN dim_person AS dp 
+                JOIN dw_schema.dim_person AS dp 
                     ON ftp.person_key = dp.person_key
-                JOIN dim_title AS dt
+                JOIN dw_schema.dim_title AS dt
                     ON ftp.title_key = dt.title_key
-                JOIN fact_title_ratings AS ftr
+                JOIN dw_schema.fact_title_ratings AS ftr
                     ON ftp.title_key = ftr.title_key
-                JOIN dim_role AS dr
+                JOIN dw_schema.dim_role AS dr
                     ON ftp.role_key = dr.role_key
                 WHERE dr.category = :job -- @role/job
                     AND dp.primary_name = :name -- @empName
@@ -236,7 +232,7 @@ class OLAP(object):
                 JOIN dw_schema.dim_title AS ep
                     ON ftr.title_key = ep.title_key
                 JOIN dw_schema.dim_title AS sea
-                    ON ep.parent_tconst = sea.tconst_id
+                    ON ep.parent_tconst = sea.tconstid
                 WHERE 
                     sea.primary_title = :series -- @seriesName
                     AND ep.season_number IS NOT NULL
@@ -268,7 +264,7 @@ class OLAP(object):
                     WHERE dt.title_type = 'movie'
                         AND ftr.num_votes > :votes -- @minVotes
                         AND dt.genre_1 IS NOT NULL
-                        AND dt.language IS NOT NULL
+                        AND dt.title_language IS NOT NULL
                     GROUP BY dt.title_language,
                         dt.genre_1
                 )
@@ -276,7 +272,7 @@ class OLAP(object):
                     tg.title_language,
                     tg.ranked_order,
                     tg.genre_1,
-                    ROUND(tg.avg_rating,2) AS avg_rating
+                    ROUND(tg.avg_rating,2) AS avg_rating,
                     tg.total_votes
                 FROM top_genre AS tg
                 WHERE tg.ranked_order <= 3
